@@ -57,7 +57,9 @@ local function open_floating_file(filename)
 end
 
 local function setup_user_commands(opts)
+  opts = opts or {}
   local target_file = opts.target_file or "todo.md"
+
   vim.api.nvim_create_user_command("TDFloat", function()
     open_floating_file(target_file)
   end, {})
