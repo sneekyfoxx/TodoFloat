@@ -9,7 +9,7 @@ local function expand_path(path)
 end
 
 local function center_window(outer, inner)
-  return (outer - inner) / 2
+  return math.floor((outer - inner) / 2) -- Decimals cause float panel errors
 end
 
 local function window_config()
@@ -29,16 +29,9 @@ end
 local function open_floating_file(filename)
   local expanded_path = expand_path(filename)
 
-  if vim.fn.filereadable(expanded_path) == 0 then
-    vim.notify("todo file doesn't exist in directory: " .. expanded_path, vim.log.levels.ERROR)
-  end
-
-  local buf = vim.fn.bufnr(expanded_path, true)
-
-  if buf == -1 then
-    vim.api.nvim_create_buf(false, false)
-    vim.api.nvim_buf_set_name(buf, expanded_path)
-  end
+  -- bufadd seamlessly fetches or constructs the target file buffer safely
+  local buf = vim.fn.bufadd(expanded_path)
+  vim.fn.bufload(buf)
 
   vim.bo[buf].swapfile = false
   local win = vim.api.nvim_open_win(buf, true, window_config())
@@ -50,7 +43,9 @@ local function open_floating_file(filename)
       if vim.api.nvim_get_option_value("modified", { buf = buf }) then
         vim.notify("save your changes.", vim.log.levels.WARN)
       else
-        vim.api.nvim_win_close(0, true)
+        if vim.api.nvim_win_is_valid(win) then
+          vim.api.nvim_win_close(win, true)
+        end
       end
     end,
   })
@@ -58,17 +53,15 @@ end
 
 local function setup_user_commands(opts)
   opts = opts or {}
-  local target_file = opts.target_file or "todo.md"
-
-  vim.api.nvim_create_user_command("TDFloat", function()
-    open_floating_file(target_file)
+  local target_file = opts.target_file or "~/todo.md"
+  vim.api.nvim_create_user_command("TodoFloat", function()
+    open_floating_file(target_file) -- Adjust target filename here if needed
   end, {})
 end
 
 M.setup = function(opts)
+  -- Automatically registers the command on launch
   setup_user_commands(opts)
 end
 
-
 return M
-
